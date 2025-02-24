@@ -11,3 +11,11 @@ analysis_dir: "/home/nponcelet/Documents/03-Script/00_Projet_Perso/02_Bioinfo/47
 # Multi_KEC settings
 # -----------------------------------------
 
+# KEC settings
+
+master_per_genus: {"Bipolaris": "Bipolaris_oryzae_ATCC_44560",
+                  "Curvularia": "Curvularia_clavata_strain_yc1106",
+                  "Exserohilum": Exserohilum_rostratum_strain_ER1}
+
+kec_include_settings: ""
+kec_exclude_settings: ""

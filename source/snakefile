@@ -17,10 +17,6 @@ rule all:
     input:
         expand(f"{OUTPUT_DIR}/2_KEC_output/{{genus}}.fasta", genus=genera)
 
-# Declare directories explicitly
-directory(f"{OUTPUT_DIR}/1_KEC_input/{{genus}}/target")
-directory(f"{OUTPUT_DIR}/1_KEC_input/{{genus}}/non_target")
-
 rule prepare_all_genomes:
     input:
         genomes_dir = GENOME_DIR
@@ -32,19 +28,38 @@ rule prepare_all_genomes:
             Path(output.done_flags[0]).parent.parent  
         )
 
-rule kec:
+rule kec_include:
     input:
         flag = f"{OUTPUT_DIR}/1_KEC_input/{{genus}}/flag.done"
     output:
+        target_files = f"{OUTPUT_DIR}/1_KEC_input/{{genus}}/target/{{genus}}.fasta"
+    params:
+        kec_include_settings = config_yaml["kec_include_settings"],
+        master_dir = lambda wildcards, input: Path(str(input.flag)).parent / "master",
+        pool_dir = lambda wildcards, input: Path(str(input.flag)).parent / "pool"
+    shell:
+        """
+        {KEC_TOOL} include \
+        -m {params.master_dir} \
+        -p {params.pool_dir} \
+        -o {output.target_files} \
+        {params.kec_include_settings}
+        """
+
+rule kec_exclude:
+    input:
+        target = rules.kec_include.output.target_files,
+    output:
         fasta_files = f"{OUTPUT_DIR}/2_KEC_output/{{genus}}.fasta"
     params:
-        # Construire les chemins target/non_target à partir de flag.done
-        target_dir = lambda wildcards, input: Path(str(input.flag)).parent / "target",
-        non_target_dir = lambda wildcards, input: Path(str(input.flag)).parent / "non_target"
+        kec_exclude_settings = config_yaml["kec_exclude_settings"],
+        non_target = f"{OUTPUT_DIR}/1_KEC_inp/{{genus}}/target.fasta"
+
     shell:
         """
         {KEC_TOOL} exclude \
-        -t {params.target_dir} \
-        -n {params.non_target_dir} \
-        -o {output.fasta_files}
+        -t {input.target} \
+        -n {params.non_target} \
+        -o {output.fasta_files} \
+        {params.kec_exclude_settings}
         """
