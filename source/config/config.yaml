@@ -1,0 +1,13 @@
+# Configuration file for Multi_KEC pipeline
+# -----------------------------------------
+# Input directories (specify paths to data files):
+
+genomes_dir: "/home/nponcelet/Documents/03-Script/00_Projet_Perso/02_Bioinfo/47_Multi_KEC/Test_data/Genomes"
+
+# Output directory (specify where results will be saved):
+
+analysis_dir: "/home/nponcelet/Documents/03-Script/00_Projet_Perso/02_Bioinfo/47_Multi_KEC/Test_data/Output"
+
+# Multi_KEC settings
+# -----------------------------------------
+

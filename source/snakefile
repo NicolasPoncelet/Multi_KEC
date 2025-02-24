@@ -1,0 +1,50 @@
+import yaml
+from pathlib import Path
+from script.prepare_kec_input import prepare_kec_input
+
+configfile: "config/config.yaml"
+
+with open("config/config.yaml", "r") as infile:
+    config_yaml = yaml.safe_load(infile)
+
+GENOME_DIR = Path(config_yaml["genomes_dir"]).resolve()
+OUTPUT_DIR = Path(config_yaml["analysis_dir"]).resolve()
+KEC_TOOL = Path("../tools/kec-linux-x86").resolve()  
+
+genera = [d.name for d in GENOME_DIR.iterdir() if d.is_dir()]
+
+rule all:
+    input:
+        expand(f"{OUTPUT_DIR}/2_KEC_output/{{genus}}.fasta", genus=genera)
+
+# Declare directories explicitly
+directory(f"{OUTPUT_DIR}/1_KEC_input/{{genus}}/target")
+directory(f"{OUTPUT_DIR}/1_KEC_input/{{genus}}/non_target")
+
+rule prepare_all_genomes:
+    input:
+        genomes_dir = GENOME_DIR
+    output:
+        done_flags = expand(f"{OUTPUT_DIR}/1_KEC_input/{{genus}}/flag.done", genus=genera)
+    run:
+        prepare_kec_input(
+            input.genomes_dir, 
+            Path(output.done_flags[0]).parent.parent  
+        )
+
+rule kec:
+    input:
+        flag = f"{OUTPUT_DIR}/1_KEC_input/{{genus}}/flag.done"
+    output:
+        fasta_files = f"{OUTPUT_DIR}/2_KEC_output/{{genus}}.fasta"
+    params:
+        # Construire les chemins target/non_target à partir de flag.done
+        target_dir = lambda wildcards, input: Path(str(input.flag)).parent / "target",
+        non_target_dir = lambda wildcards, input: Path(str(input.flag)).parent / "non_target"
+    shell:
+        """
+        {KEC_TOOL} exclude \
+        -t {params.target_dir} \
+        -n {params.non_target_dir} \
+        -o {output.fasta_files}
+        """
