@@ -1,0 +1,43 @@
+__default__:
+    cpus-per-task: 2
+    mem-per-cpu: 4G
+    partition: fast
+    job-name: '{rule}.{wildcards}'
+
+bwa_index:
+    cpus-per-task: 1
+
+bwa_map:
+    cpus-per-task: 6
+    mem-per-cpu: 4G
+    partition: long
+
+samtools_sort:
+    cpus-per-task: 6
+    mem-per-cpu: 4G
+    partition: long
+
+samtools_index:
+    cpus-per-task: 1
+
+samtools_flagstat:
+    cpus-per-task: 4
+    mem-per-cpu: 4G
+
+get_reference_metrics:
+    cpus-per-task: 4
+    mem-per-cpu: 4G
+
+get_flagstat_metrics:
+    cpus-per-task: 2
+    mem-per-cpu: 2G
+
+get_fastq_metrics:
+    cpus-per-task: 2
+    mem-per-cpu: 2G
+
+final_report:
+    cpus-per-task: 1
+    mem-per-cpu: 4G
+
+

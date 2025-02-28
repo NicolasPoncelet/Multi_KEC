@@ -17,5 +17,51 @@ master_per_genus: {"Bipolaris": "Bipolaris_oryzae_ATCC_44560",
                   "Curvularia": "Curvularia_clavata_strain_yc1106",
                   "Exserohilum": Exserohilum_rostratum_strain_ER1}
 
-kec_include_settings: ""
-kec_exclude_settings: ""
+kec_include_settings: "--min 1000"
+
+# include mode
+# -k - K-mer size. Explained in separate section. Default = 12.
+# --min - Minimum size of resulting sequence. Default = 13.
+# --max - Maximum size of resulting sequence (0 = unlimited). Default = 0.
+
+kec_exclude_settings: "--min 500 -k 14 -r"
+
+# exclude mode
+# -k - K-mer size. Explained in separate section. Default = 12.
+# -r - Also exclude reverse complements of the sequences. Takes more (approx. 2 - 3x) time to finish. Default = false.
+# --min - Minimum size of resulting sequence. Default = 13.
+# --max - Maximum size of resulting sequence (0 = unlimited). Default = 0.
+
+# Primer3 settings
+
+# Primer3 settings
+primer3_settings:
+  # Paramètres liés à la taille des amorces
+  PRIMER_OPT_SIZE: 20          # Taille optimale des amorces (en pb)
+  PRIMER_MIN_SIZE: 18          # Taille minimale des amorces (en pb)
+  PRIMER_MAX_SIZE: 25          # Taille maximale des amorces (en pb)
+
+  # Paramètres relatifs à la température de fusion (Tm)
+  PRIMER_OPT_TM: 60.0          # Tm optimale (en °C)
+  PRIMER_MIN_TM: 57.0          # Tm minimale (en °C)
+  PRIMER_MAX_TM: 63.0          # Tm maximale (en °C)
+  PRIMER_DNA_CONC: 50.0        # Concentration en ADN (nM) utilisée pour le calcul de la Tm
+  PRIMER_SALT_CONC: 50.0       # Concentration en sels (mM) influençant la Tm
+
+  # Paramètres concernant la composition en bases
+  PRIMER_MIN_GC: 40.0          # Pourcentage minimal de GC dans l'amorce
+  PRIMER_MAX_GC: 60.0          # Pourcentage maximal de GC dans l'amorce
+  PRIMER_MAX_POLY_X: 4         # Longueur maximale des homopolymères (ex: AAAA)
+
+  # Paramètres pour éviter les interactions indésirables
+  PRIMER_SELF_ANY: 8.00        # Seuil d'auto-complémentarité interne (score maximum autorisé)
+  PRIMER_SELF_END: 3.00        # Seuil d'auto-complémentarité à l'extrémité 3'
+  PRIMER_PAIR_MAX_COMPL_ANY: 12.00  # Seuil pour la complémentarité entre amorces (interactions globales)
+  PRIMER_PAIR_MAX_COMPL_END: 6.00   # Seuil pour la complémentarité à l'extrémité entre amorces
+
+  # Paramètres définissant le produit PCR
+  PRIMER_PRODUCT_SIZE_RANGE: "100-1000"   # Plage de taille désirée pour le produit amplifié (en pb)
+  PRIMER_NUM_RETURN: 5                   # Nombre de paires d’amorces proposées
+
+  # Options supplémentaires
+  PRIMER_EXPLAIN_FLAG: 1      # Active le mode explicatif pour détailler le choix des amorces

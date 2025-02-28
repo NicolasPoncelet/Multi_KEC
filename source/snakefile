@@ -1,6 +1,7 @@
 import yaml
 from pathlib import Path
 from script.prepare_kec_input import prepare_kec_input
+from script.prepare_primer3_input import prepare_primer3_input
 
 configfile: "config/config.yaml"
 
@@ -35,8 +36,9 @@ rule kec_include:
         target_files = f"{OUTPUT_DIR}/1_KEC_input/{{genus}}/target/{{genus}}.fasta"
     params:
         kec_include_settings = config_yaml["kec_include_settings"],
-        master_dir = lambda wildcards, input: Path(str(input.flag)).parent / "master",
-        pool_dir = lambda wildcards, input: Path(str(input.flag)).parent / "pool"
+        master_dir = f"{OUTPUT_DIR}/1_KEC_input/{{genus}}/master",
+        pool_dir = f"{OUTPUT_DIR}/1_KEC_input/{{genus}}/pool"
+
     shell:
         """
         {KEC_TOOL} include \
@@ -53,7 +55,7 @@ rule kec_exclude:
         fasta_files = f"{OUTPUT_DIR}/2_KEC_output/{{genus}}.fasta"
     params:
         kec_exclude_settings = config_yaml["kec_exclude_settings"],
-        non_target = f"{OUTPUT_DIR}/1_KEC_inp/{{genus}}/target.fasta"
+        non_target = f"{OUTPUT_DIR}/1_KEC_input/{{genus}}/non_target"
 
     shell:
         """
@@ -62,4 +64,29 @@ rule kec_exclude:
         -n {params.non_target} \
         -o {output.fasta_files} \
         {params.kec_exclude_settings}
+        """
+
+rule prepare_primer3_input:
+    input:
+        fasta_files =rules.kec_exclude.output
+    output:
+        primer3_files = f"{OUTPUT_DIR}/3_Primer3_input/{{genus}}/flag.done"
+    run:
+        prepare_primer3_input(
+                        input.fasta_files,
+                        Path(output.primer3_files).parent)
+
+rule primer3:
+    input:
+        
+    output:
+
+    params:
+
+    conda:
+        "envs/primer3.yaml"
+
+    shell:
+        """
+        primer3_core < input.txt > output.txt
         """

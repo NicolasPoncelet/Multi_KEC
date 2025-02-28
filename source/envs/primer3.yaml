@@ -1,0 +1,7 @@
+name: primer3_env
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies :
+  - primer3=2.6.1
