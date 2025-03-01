@@ -2,6 +2,7 @@ import yaml
 from pathlib import Path
 from script.prepare_kec_input import prepare_kec_input
 from script.prepare_primer3_input import prepare_primer3_input
+from script.generate_input_path import get_input_path
 
 configfile: "config/config.yaml"
 
@@ -10,13 +11,14 @@ with open("config/config.yaml", "r") as infile:
 
 GENOME_DIR = Path(config_yaml["genomes_dir"]).resolve()
 OUTPUT_DIR = Path(config_yaml["analysis_dir"]).resolve()
-KEC_TOOL = Path("../tools/kec-linux-x86").resolve()  
+KEC_TOOL = Path("../tools/kec-linux-x86").resolve()
 
 genera = [d.name for d in GENOME_DIR.iterdir() if d.is_dir()]
 
 rule all:
     input:
-        expand(f"{OUTPUT_DIR}/2_KEC_output/{{genus}}.fasta", genus=genera)
+        # Dépendre directement des sorties du checkpoint
+        expand(f"{OUTPUT_DIR}/3_Primer3_input/{{genus}}/primer3.done", genus=genera)
 
 rule prepare_all_genomes:
     input:
@@ -25,8 +27,8 @@ rule prepare_all_genomes:
         done_flags = expand(f"{OUTPUT_DIR}/1_KEC_input/{{genus}}/flag.done", genus=genera)
     run:
         prepare_kec_input(
-            input.genomes_dir, 
-            Path(output.done_flags[0]).parent.parent  
+            str(input.genomes_dir),  # Convertir en string pour compatibilité
+            Path(output.done_flags[0]).parent.parent
         )
 
 rule kec_include:
@@ -38,7 +40,6 @@ rule kec_include:
         kec_include_settings = config_yaml["kec_include_settings"],
         master_dir = f"{OUTPUT_DIR}/1_KEC_input/{{genus}}/master",
         pool_dir = f"{OUTPUT_DIR}/1_KEC_input/{{genus}}/pool"
-
     shell:
         """
         {KEC_TOOL} include \
@@ -56,7 +57,8 @@ rule kec_exclude:
     params:
         kec_exclude_settings = config_yaml["kec_exclude_settings"],
         non_target = f"{OUTPUT_DIR}/1_KEC_input/{{genus}}/non_target"
-
+    resources:
+        mem_mb=20000 
     shell:
         """
         {KEC_TOOL} exclude \
@@ -68,25 +70,32 @@ rule kec_exclude:
 
 rule prepare_primer3_input:
     input:
-        fasta_files =rules.kec_exclude.output
+        fasta_files = rules.kec_exclude.output.fasta_files
     output:
-        primer3_files = f"{OUTPUT_DIR}/3_Primer3_input/{{genus}}/flag.done"
+        primer3_flag = f"{OUTPUT_DIR}/3_Primer3_input/{{genus}}/flag.done"
     run:
         prepare_primer3_input(
-                        input.fasta_files,
-                        Path(output.primer3_files).parent)
+            str(input.fasta_files),
+            Path(output.primer3_flag).parent
+        )
 
-rule primer3:
+checkpoint primer3:
     input:
-        
+        primer3_flag = f"{OUTPUT_DIR}/3_Primer3_input/{{genus}}/flag.done"
     output:
-
+        touch(f"{OUTPUT_DIR}/3_Primer3_input/{{genus}}/primer3.done")
     params:
-
-    conda:
-        "envs/primer3.yaml"
-
-    shell:
+        input_dir = f"{OUTPUT_DIR}/3_Primer3_input/{{genus}}"
+    script:
+        # Script pour traiter dynamiquement tous les fichiers .txt générés
         """
-        primer3_core < input.txt > output.txt
+        import os
+        from pathlib import Path
+        
+        input_dir = Path("{params.input_dir}")
+        txt_files = list(input_dir.rglob("*.txt"))
+        
+        for txt_file in txt_files:
+            output_file = txt_file.with_suffix(".primer")
+            os.system(f"primer3_core {{txt_file}} > {{output_file}}")
         """
