@@ -2,7 +2,7 @@ from pathlib import Path
 import sys, yaml
 import pandas as pd
 
-def prepare_primer3_input(input_dir: str, output_dir: str) -> None:
+def prepare_primer3_input(input_dir: Path, output_dir: str) -> None:
 
     input_dir = Path(input_dir).resolve()
     output_dir = Path(output_dir).resolve()
@@ -16,6 +16,8 @@ def prepare_primer3_input(input_dir: str, output_dir: str) -> None:
     formated_settings:str ="\n".join([f'{key}={value}' for key, value in primer3_settings.items()])
 
     targeted_areas_fasta:list[Path] = list(input_dir.rglob("*.fasta")) 
+    print(input_dir)
+    print(targeted_areas_fasta)
     primer_info:list = []
 
     for fasta_file in targeted_areas_fasta :
@@ -62,21 +64,8 @@ def prepare_primer3_input(input_dir: str, output_dir: str) -> None:
     print(summary_file)
     summary_file.to_csv(analysis_dir / "summary.csv")
 
-# import yaml
-
-# with open(Path("../config/config.yaml"), "r") as infile:
-#     config_yaml = yaml.load(infile, Loader=yaml.SafeLoader)
-
-# report_path = "/home/nponcelet/Documents/03-Script/00_Projet_Perso/02_Bioinfo/42_Multi_BLAST/Test_data/Output/BLAST_results/compiled_results.csv"
-# report_path = Path(report_path)
-
-# get_extracted_seqs(report_path,config_yaml)
-
 if __name__ == "__main__":
 
-    #genome_dir, output_dir = sys.argv[1], sys.argv[2]
-
-    genome_dir = "/home/nponcelet/Documents/03-Script/00_Projet_Perso/02_Bioinfo/47_Multi_KEC/Test_data/Output/2_KEC_output"
-    output_dir = "/home/nponcelet/Documents/03-Script/00_Projet_Perso/02_Bioinfo/47_Multi_KEC/Test_data/Output/3_Primer3_input"
+    genome_dir, output_dir = sys.argv[1], sys.argv[2]
 
     prepare_primer3_input(genome_dir, output_dir)

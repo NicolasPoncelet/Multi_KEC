@@ -3,41 +3,24 @@ __default__:
     mem-per-cpu: 4G
     partition: fast
     job-name: '{rule}.{wildcards}'
+    time: '2:00:00'
+    output: 'logs/{rule}.{wildcards}.out'
+    error: 'logs/{rule}.{wildcards}.err'
 
-bwa_index:
-    cpus-per-task: 1
-
-bwa_map:
-    cpus-per-task: 6
-    mem-per-cpu: 4G
+kec_include:
+    cpus-per-task: 5
+    mem-per-cpu: 10G
     partition: long
 
-samtools_sort:
-    cpus-per-task: 6
-    mem-per-cpu: 4G
+kec_exclude:
+    cpus-per-task: 10
+    mem-per-cpu: 40G  
     partition: long
 
-samtools_index:
-    cpus-per-task: 1
-
-samtools_flagstat:
-    cpus-per-task: 4
+prepare_all_genomes:
+    cpus-per-task: 5
     mem-per-cpu: 4G
 
-get_reference_metrics:
-    cpus-per-task: 4
+prepare_primer3_input:
+    cpus-per-task: 5
     mem-per-cpu: 4G
-
-get_flagstat_metrics:
-    cpus-per-task: 2
-    mem-per-cpu: 2G
-
-get_fastq_metrics:
-    cpus-per-task: 2
-    mem-per-cpu: 2G
-
-final_report:
-    cpus-per-task: 1
-    mem-per-cpu: 4G
-
-

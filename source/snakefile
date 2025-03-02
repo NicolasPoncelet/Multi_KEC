@@ -11,13 +11,12 @@ with open("config/config.yaml", "r") as infile:
 
 GENOME_DIR = Path(config_yaml["genomes_dir"]).resolve()
 OUTPUT_DIR = Path(config_yaml["analysis_dir"]).resolve()
-KEC_TOOL = Path("../tools/kec-linux-x86").resolve()
+KEC_TOOL = Path("../tools/kec-linux-x64").resolve()
 
 genera = [d.name for d in GENOME_DIR.iterdir() if d.is_dir()]
 
 rule all:
     input:
-        # Dépendre directement des sorties du checkpoint
         expand(f"{OUTPUT_DIR}/3_Primer3_input/{{genus}}/primer3.done", genus=genera)
 
 rule prepare_all_genomes:
@@ -58,7 +57,8 @@ rule kec_exclude:
         kec_exclude_settings = config_yaml["kec_exclude_settings"],
         non_target = f"{OUTPUT_DIR}/1_KEC_input/{{genus}}/non_target"
     resources:
-        mem_mb=20000 
+        mem_mb=40000,  
+        cpus=10
     shell:
         """
         {KEC_TOOL} exclude \
@@ -74,9 +74,12 @@ rule prepare_primer3_input:
     output:
         primer3_flag = f"{OUTPUT_DIR}/3_Primer3_input/{{genus}}/flag.done"
     run:
+        fasta_dir = Path(str(input.fasta_files)).parent
+        print(f'{fasta_dir=}')
+
         prepare_primer3_input(
-            str(input.fasta_files),
-            Path(output.primer3_flag).parent
+            fasta_dir,
+            f"{OUTPUT_DIR}/3_Primer3_input/"
         )
 
 checkpoint primer3:
@@ -87,7 +90,6 @@ checkpoint primer3:
     params:
         input_dir = f"{OUTPUT_DIR}/3_Primer3_input/{{genus}}"
     script:
-        # Script pour traiter dynamiquement tous les fichiers .txt générés
         """
         import os
         from pathlib import Path
