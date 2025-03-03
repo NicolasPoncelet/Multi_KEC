@@ -17,14 +17,14 @@ master_per_genus: {"Bipolaris": "Bipolaris_oryzae_ATCC_44560",
                   "Curvularia": "Curvularia_clavata_strain_yc1106",
                   "Exserohilum": Exserohilum_rostratum_strain_ER1}
 
-kec_include_settings: "--min=500"
+kec_include_settings: "-k=13 --min=500"
 
 # include mode
 # -k - K-mer size. Explained in separate section. Default = 12.
 # --min - Minimum size of resulting sequence. Default = 13.
 # --max - Maximum size of resulting sequence (0 = unlimited). Default = 0.
 
-kec_exclude_settings: "-k=20 --min=1000"
+kec_exclude_settings: "-k=80 --min=1000 -r"
 
 # exclude mode
 # -k - K-mer size. Explained in separate section. Default = 12.
@@ -63,4 +63,4 @@ primer3_settings:
   PRIMER_NUM_RETURN: 5                   # Nombre de paires d’amorces proposées
 
   # Options supplémentaires
-  PRIMER_EXPLAIN_FLAG: 1      # Active le mode explicatif pour détailler le choix des amorces
+  PRIMER_EXPLAIN_FLAG: 0      # Active le mode explicatif pour détailler le choix des amorces

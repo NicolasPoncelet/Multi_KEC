@@ -11,7 +11,10 @@ source "$CONDA_ROOT/etc/profile.d/conda.sh"
 
 conda activate /shared/home/nponcelet/gbs_blast/envs/multimap
 
+snakemake --unlock 
+
 snakemake --jobs 100 \
           --verbose \
           --cluster-config config/cluster.yaml \
+          --use-conda \
           --cluster "sbatch --partition={cluster.partition} --time={cluster.time} --cpus-per-task={cluster.cpus-per-task} --mem-per-cpu={cluster.mem-per-cpu} --output={cluster.output} --error={cluster.error}"

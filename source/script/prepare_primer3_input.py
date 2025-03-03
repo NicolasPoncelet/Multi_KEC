@@ -40,14 +40,15 @@ def prepare_primer3_input(input_dir: Path, output_dir: str) -> None:
                     key = f'{index}_{fasta_file.stem};{line.lstrip(">")}'
                     sequences[key] = ""
 
-                if line.isalpha() :
-                    sequences[key] = line.strip("\n")
+                if line.isalpha():
+                    sequences[key] = line
                 
                 primer3_script_path:Path = output_path / f"{index}_{fasta_file.stem}.txt"
 
                 with open(primer3_script_path,"w") as outfile :
 
-                    outfile.write(f"""SEQUENCE_TEMPLATE={sequences[key]}{formated_settings}
+                    outfile.write(f"""SEQUENCE_TEMPLATE={sequences[key]}
+{formated_settings}
 =
 """)
         primer_info.append(sequences)

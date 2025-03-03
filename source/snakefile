@@ -4,6 +4,7 @@ from script.prepare_kec_input import prepare_kec_input
 from script.prepare_primer3_input import prepare_primer3_input
 from script.generate_input_path import get_input_path
 
+
 configfile: "config/config.yaml"
 
 with open("config/config.yaml", "r") as infile:
@@ -17,7 +18,7 @@ genera = [d.name for d in GENOME_DIR.iterdir() if d.is_dir()]
 
 rule all:
     input:
-        expand(f"{OUTPUT_DIR}/3_Primer3_input/{{genus}}/primer3.done", genus=genera)
+        expand(f"{OUTPUT_DIR}/4_Primer3_output/{{genus}}/primer3.done", genus=genera)
 
 rule prepare_all_genomes:
     input:
@@ -75,29 +76,27 @@ rule prepare_primer3_input:
         primer3_flag = f"{OUTPUT_DIR}/3_Primer3_input/{{genus}}/flag.done"
     run:
         fasta_dir = Path(str(input.fasta_files)).parent
-        print(f'{fasta_dir=}')
 
         prepare_primer3_input(
             fasta_dir,
             f"{OUTPUT_DIR}/3_Primer3_input/"
         )
 
-checkpoint primer3:
-    input:
-        primer3_flag = f"{OUTPUT_DIR}/3_Primer3_input/{{genus}}/flag.done"
-    output:
-        touch(f"{OUTPUT_DIR}/3_Primer3_input/{{genus}}/primer3.done")
+rule primer3:
+    input: 
+        primer3_input_flag = f"{OUTPUT_DIR}/3_Primer3_input/{{genus}}/flag.done"
+    output: 
+        primer3_output_flag = f"{OUTPUT_DIR}/4_Primer3_output/{{genus}}/primer3.done"
+    conda:
+        "envs/primer3.yaml"  
     params:
-        input_dir = f"{OUTPUT_DIR}/3_Primer3_input/{{genus}}"
-    script:
+        input_dir = f"{OUTPUT_DIR}/3_Primer3_input/{{genus}}",
+        output_dir = f"{OUTPUT_DIR}/4_Primer3_output/{{genus}}"
+    shell:
         """
-        import os
-        from pathlib import Path
-        
-        input_dir = Path("{params.input_dir}")
-        txt_files = list(input_dir.rglob("*.txt"))
-        
-        for txt_file in txt_files:
-            output_file = txt_file.with_suffix(".primer")
-            os.system(f"primer3_core {{txt_file}} > {{output_file}}")
+        mkdir -p {params.output_dir}
+        for txt_file in {params.input_dir}/*.txt; do
+            primer3_core "$txt_file" > {params.output_dir}/$(basename "$txt_file" .txt).primer
+        done
+        touch {output.primer3_output_flag}
         """
