@@ -2,9 +2,9 @@ from pathlib import Path
 import sys, yaml
 import pandas as pd
 
-def prepare_primer3_input(input_dir: Path, output_dir: str) -> None:
+def prepare_primer3_input(file_list:list[Path], output_dir: str,report_file:str) -> None:
 
-    input_dir = Path(input_dir).resolve()
+    report_file = Path(report_file).resolve()
     output_dir = Path(output_dir).resolve()
 
     with open("config/config.yaml", "r") as infile:
@@ -15,8 +15,8 @@ def prepare_primer3_input(input_dir: Path, output_dir: str) -> None:
     primer3_settings:dict = config_yaml["primer3_settings"]
     formated_settings:str ="\n".join([f'{key}={value}' for key, value in primer3_settings.items()])
 
-    targeted_areas_fasta:list[Path] = list(input_dir.rglob("*.fasta")) 
-    print(input_dir)
+    targeted_areas_fasta:list[Path] = list(file_list.rglob("*.fasta")) 
+
     print(targeted_areas_fasta)
     primer_info:list = []
 
@@ -62,8 +62,7 @@ def prepare_primer3_input(input_dir: Path, output_dir: str) -> None:
     summary_file = pd.DataFrame.from_records(primer_info)
     summary_file.reset_index(drop=True, inplace=True)
 
-    print(summary_file)
-    summary_file.to_csv(analysis_dir / "summary.csv")
+    summary_file.to_csv(report_file)
 
 if __name__ == "__main__":
 

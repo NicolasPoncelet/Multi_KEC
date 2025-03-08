@@ -3,6 +3,8 @@ from pathlib import Path
 from script.prepare_kec_input import prepare_kec_input
 from script.prepare_primer3_input import prepare_primer3_input
 from script.generate_input_path import get_input_path
+from script.compile_logs import compile_logs
+from script.select_best_runs import select_best_runs
 
 
 configfile: "config/config.yaml"
@@ -13,39 +15,63 @@ with open("config/config.yaml", "r") as infile:
 GENOME_DIR = Path(config_yaml["genomes_dir"]).resolve()
 OUTPUT_DIR = Path(config_yaml["analysis_dir"]).resolve()
 KEC_TOOL = Path("../tools/kec-linux-x64").resolve()
+KMER_INCLUDE = config["kec_include_settings"]["kmer_values"]
+KMER_EXCLUDE = config["kec_exclude_settings"]["kmer_values"]
 
 genera = [d.name for d in GENOME_DIR.iterdir() if d.is_dir()]
 
 rule all:
     input:
-        expand(f"{OUTPUT_DIR}/4_Primer3_output/{{genus}}/primer3.done", genus=genera)
+        kec_ex = expand(f"{OUTPUT_DIR}/2_KEC_output/{{genus}}/{{kmer_in}}_{{kmer_ex}}{{genus}}.fasta",
+                genus=genera,
+                kmer_in = KMER_INCLUDE,
+                kmer_ex = KMER_EXCLUDE),
+        primer3_output_flag = f"{OUTPUT_DIR}/4_Primer3_output/{{genus}}/primer3.done"
 
-rule prepare_all_genomes:
+rule prepare_input:
+    """
+    Cette règle crée TOUTE l'arborescence 1_KEC_input/<genus>/<k_in>_<k_ex>/
+    et place les symlinks dans 'master', 'pool', 'non_target', ainsi qu'un 'flag.done'.
+
+    Elle appelle la fonction prepare_kec_input(...) qui boucle déjà sur
+    tous les sous-répertoires (chaque genre) et sur toutes les combinaisons
+    (k_in, k_ex).
+    """
     input:
-        genomes_dir = GENOME_DIR
+        dir=GENOME_DIR
     output:
-        done_flags = expand(f"{OUTPUT_DIR}/1_KEC_input/{{genus}}/flag.done", genus=genera)
+        done_flags=expand(
+            "{analysis_dir}/1_KEC_input/{genus}/{k_in}_{k_ex}/flag.done",
+            analysis_dir=str(OUTPUT_DIR),
+            genus=genera,
+            k_in=KMER_INCLUDE,
+            k_ex=KMER_EXCLUDE
+        )
     run:
         prepare_kec_input(
-            str(input.genomes_dir),  # Convertir en string pour compatibilité
-            Path(output.done_flags[0]).parent.parent
+            input_dir=str(input.dir),
+            output_dir=str(OUTPUT_DIR / "1_KEC_input"),   
+            kmer_includes=KMER_INCLUDE,
+            kmer_excludes=KMER_EXCLUDE,
+            config_file="config/config.yaml"
         )
 
 rule kec_include:
     input:
-        flag = f"{OUTPUT_DIR}/1_KEC_input/{{genus}}/flag.done"
+        flag = rules.prepare_input.output.done_flags
     output:
-        target_files = f"{OUTPUT_DIR}/1_KEC_input/{{genus}}/target/{{genus}}.fasta"
+        target_files = f"{OUTPUT_DIR}/1_KEC_input/{{genus}}/{{kmer_in}}_{{kmer_ex}}/target/{{genus}}.fasta"
     params:
-        kec_include_settings = config_yaml["kec_include_settings"],
-        master_dir = f"{OUTPUT_DIR}/1_KEC_input/{{genus}}/master",
-        pool_dir = f"{OUTPUT_DIR}/1_KEC_input/{{genus}}/pool"
+        kec_include_settings = config_yaml["kec_include_settings"]["kec_params"],
+        master_dir = f"{OUTPUT_DIR}/1_KEC_input/{{genus}}/{{kmer_in}}_{{kmer_ex}}/master",
+        pool_dir = f"{OUTPUT_DIR}/1_KEC_input/{{genus}}/{{kmer_in}}_{{kmer_ex}}/pool"
     shell:
         """
         {KEC_TOOL} include \
         -m {params.master_dir} \
         -p {params.pool_dir} \
         -o {output.target_files} \
+        -k {wildcards.kmer_in} \
         {params.kec_include_settings}
         """
 
@@ -53,38 +79,50 @@ rule kec_exclude:
     input:
         target = rules.kec_include.output.target_files,
     output:
-        fasta_files = f"{OUTPUT_DIR}/2_KEC_output/{{genus}}.fasta"
+        fasta_files = f"{OUTPUT_DIR}/2_KEC_output/{{genus}}/{{kmer_in}}_{{kmer_ex}}/{{genus}}.fasta"
     params:
-        kec_exclude_settings = config_yaml["kec_exclude_settings"],
-        non_target = f"{OUTPUT_DIR}/1_KEC_input/{{genus}}/non_target"
-    resources:
-        mem_mb=40000,  
-        cpus=10
+        kec_exclude_settings = config_yaml["kec_exclude_settings"]["kec_params"],
+        non_target = f"{OUTPUT_DIR}/1_KEC_input/{{genus}}/{{kmer_in}}_{{kmer_ex}}/non_target"
     shell:
         """
         {KEC_TOOL} exclude \
         -t {input.target} \
         -n {params.non_target} \
         -o {output.fasta_files} \
+        -k {wildcards.kmer_ex} \
         {params.kec_exclude_settings}
         """
 
+rule compile_run_infos:
+    input:
+        rules.kec_exclude.output
+    output:
+        kec_report = f"{OUTPUT_DIR}/0_Final/KEC_run_info.csv"
+    run:
+        compile_logs(
+            log_dir = "logs/",
+            output_file = output.kec_report)
+
 rule prepare_primer3_input:
     input:
-        fasta_files = rules.kec_exclude.output.fasta_files
+        fasta_files = select_best_runs(
+            rules.compile_run_infos.output.kec_report,
+            f"{OUTPUT_DIR}/2_KEC_output/",
+            f"{OUTPUT_DIR}/0_Final/KEC_best_run.csv")
     output:
         primer3_flag = f"{OUTPUT_DIR}/3_Primer3_input/{{genus}}/flag.done"
     run:
-        fasta_dir = Path(str(input.fasta_files)).parent
+        fasta_dir = input.fasta_files
 
         prepare_primer3_input(
             fasta_dir,
-            f"{OUTPUT_DIR}/3_Primer3_input/"
+            f"{OUTPUT_DIR}/3_Primer3_input/",
+            f"{OUTPUT_DIR}/0_Final/KEC_summary.csv"
         )
 
 rule primer3:
     input: 
-        primer3_input_flag = f"{OUTPUT_DIR}/3_Primer3_input/{{genus}}/flag.done"
+        primer3_input_flag = rules.prepare_primer3_input.output.primer3_flag
     output: 
         primer3_output_flag = f"{OUTPUT_DIR}/4_Primer3_output/{{genus}}/primer3.done"
     conda:
