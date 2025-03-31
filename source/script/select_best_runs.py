@@ -28,7 +28,7 @@ def select_best_runs(csv_file:str, fasta_dir:str,report_path:str) -> list[Path] 
         kmer_ex = row["kmer_ex"]
         kmer_in = row["kmer_in"]
 
-        current_path = f'{fasta_dir}/{genus}/{kmer_in}_{kmer_ex}/{genus}.fasta'
+        current_path = Path(f'{fasta_dir}/{genus}/{kmer_in}_{kmer_ex}/{genus}.fasta').resolve()
 
         print(current_path)
         

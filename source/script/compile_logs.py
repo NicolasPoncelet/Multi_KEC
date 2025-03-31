@@ -7,6 +7,7 @@ def compile_logs(log_dir:str,output_file:str) -> None :
 
     output_path = Path(output_file).resolve()
     log_dir = Path(log_dir).resolve()
+    output_path.parent.mkdir(parents=True, exist_ok=True) 
 
     out_files:list[Path] = list(log for log in log_dir.glob("*.out") if log.stem.startswith("kec_"))
     print(*out_files,sep = '\n')

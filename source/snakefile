@@ -5,7 +5,9 @@ from script.prepare_primer3_input import prepare_primer3_input
 from script.generate_input_path import get_input_path
 from script.compile_logs import compile_logs
 from script.select_best_runs import select_best_runs
-
+from script.prepare_blast_input import prepare_blast_input, extract_fasta
+from script.compile_primer_info import compile_primer_info
+from script.generate_blast_path import generate_blast_path
 
 configfile: "config/config.yaml"
 
@@ -22,21 +24,24 @@ genera = [d.name for d in GENOME_DIR.iterdir() if d.is_dir()]
 
 rule all:
     input:
-        kec_ex = expand(f"{OUTPUT_DIR}/2_KEC_output/{{genus}}/{{kmer_in}}_{{kmer_ex}}{{genus}}.fasta",
-                genus=genera,
-                kmer_in = KMER_INCLUDE,
-                kmer_ex = KMER_EXCLUDE),
-        primer3_output_flag = f"{OUTPUT_DIR}/4_Primer3_output/{{genus}}/primer3.done"
+        kec_ex = expand(
+            f"{OUTPUT_DIR}/2_KEC_output/{{genus}}/{{kmer_in}}_{{kmer_ex}}/{{genus}}.fasta",
+            genus=genera,
+            kmer_in=KMER_INCLUDE,
+            kmer_ex=KMER_EXCLUDE
+        ),
+        primer3_output_flags = expand(
+            f"{OUTPUT_DIR}/4_Primer3_output/{{genus}}/primer3.done",
+            genus=genera
+        ),
+        final_flag =expand( f"{OUTPUT_DIR}/5_BLAST/{{genus}}/flag.done",
+            genus=genera ),
+        db_blast_done = expand(f'{OUTPUT_DIR}/5_BLAST/{{genus}}/{{type}}/blast_db.done',
+                        genus = genera,
+                        type = ["target","non_target"]
+                        )
 
 rule prepare_input:
-    """
-    Cette règle crée TOUTE l'arborescence 1_KEC_input/<genus>/<k_in>_<k_ex>/
-    et place les symlinks dans 'master', 'pool', 'non_target', ainsi qu'un 'flag.done'.
-
-    Elle appelle la fonction prepare_kec_input(...) qui boucle déjà sur
-    tous les sous-répertoires (chaque genre) et sur toutes les combinaisons
-    (k_in, k_ex).
-    """
     input:
         dir=GENOME_DIR
     output:
@@ -95,27 +100,34 @@ rule kec_exclude:
 
 rule compile_run_infos:
     input:
-        rules.kec_exclude.output
+        expand(
+            f"{OUTPUT_DIR}/2_KEC_output/{{genus}}/{{kmer_in}}_{{kmer_ex}}/{{genus}}.fasta",
+            genus=genera,
+            kmer_in=KMER_INCLUDE,
+            kmer_ex=KMER_EXCLUDE
+        )
     output:
         kec_report = f"{OUTPUT_DIR}/0_Final/KEC_run_info.csv"
     run:
         compile_logs(
-            log_dir = "logs/",
-            output_file = output.kec_report)
+            log_dir="./logs",  
+            output_file=output.kec_report
+        )
 
 rule prepare_primer3_input:
     input:
+        kec_report = rules.compile_run_infos.output.kec_report,
+    output:
+        primer3_flag = f"{OUTPUT_DIR}/3_Primer3_input/{{genus}}/flag.done"
+    run:
+
         fasta_files = select_best_runs(
             rules.compile_run_infos.output.kec_report,
             f"{OUTPUT_DIR}/2_KEC_output/",
             f"{OUTPUT_DIR}/0_Final/KEC_best_run.csv")
-    output:
-        primer3_flag = f"{OUTPUT_DIR}/3_Primer3_input/{{genus}}/flag.done"
-    run:
-        fasta_dir = input.fasta_files
 
         prepare_primer3_input(
-            fasta_dir,
+            fasta_files,
             f"{OUTPUT_DIR}/3_Primer3_input/",
             f"{OUTPUT_DIR}/0_Final/KEC_summary.csv"
         )
@@ -138,3 +150,79 @@ rule primer3:
         done
         touch {output.primer3_output_flag}
         """
+
+rule prepare_blast_files:
+    input:
+        primer3_done_flag = rules.primer3.output.primer3_output_flag
+    output:
+        prepare_blast_done_flag = f"{OUTPUT_DIR}/5_BLAST/{{genus}}/flag.done"
+    run:
+
+        compile_primer_info(
+            primer_dir = f"{OUTPUT_DIR}/4_Primer3_output/",
+            output_file = f"{OUTPUT_DIR}/0_Final/primer_summary.csv"
+            )
+
+        extract_fasta(
+            metadata_file = f"{OUTPUT_DIR}/0_Final/primer_summary.csv",
+            output_dir = f"{OUTPUT_DIR}/5_BLAST/"
+            )
+
+        prepare_blast_input(
+            reference_dir = str(GENOME_DIR),
+            output_dir = f"{OUTPUT_DIR}/5_BLAST/",
+            config_file = "config/config.yaml"
+        )
+
+rule make_BLAST_db:
+    input:
+        flag_done = f"{OUTPUT_DIR}/5_BLAST/{{genus}}/flag.done",
+        assemblies = lambda wildcards: generate_blast_path(f'{OUTPUT_DIR}/5_BLAST/{wildcards.genus}/{wildcards.type}')
+    output:
+        blast_db_flag = f'{OUTPUT_DIR}/5_BLAST/{{genus}}/{{type}}/blast_db.done'
+    conda:
+        "envs/blast.yaml"
+    shell:
+        """
+        for fasta in {input.assemblies}; do
+            fasta_path=$(realpath "$fasta")
+            fasta_dir=$(dirname "$fasta_path")
+            fasta_name=$(basename "$fasta_path" .fasta)
+
+            makeblastdb \
+                -in "$fasta_path" \
+                -dbtype nucl \
+                -out "$fasta_dir/${{fasta_name}}"
+        done
+
+        touch {output.blast_db_flag}
+        """
+
+
+# rule BLASTN_query:
+#     """BLASTN query in Database_nuc"""
+#     input:
+#         db_files=rules.make_BLAST_db.output.blast_db_files, 
+#         query=f"{QUERY_DIR}/{{query}}.fasta",
+#         assemblies=rules.move_fasta.output
+#     output:
+#         BLASTN_out=f"{OUTPUT_DIR}/BLASTN/{{assembly}}/{{query}}_out_blast.txt"
+#     conda:
+#         "envs/blast.yaml"
+#     shell:
+#         """
+#         blastn \
+#         -task blastn-short \
+#         -query {input.query} \
+#         -db {OUTPUT_DIR}/Database_nuc/{wildcards.assembly} \
+#         -out {output.BLASTN_out} \
+#         -dust no \
+#         -soft_masking false \
+#         -penalty -3 \
+#         -reward 1 \
+#         -gapopen 5 \
+#         -gapextend 2 \
+#         -evalue 1e-5 \
+#         -outfmt '6 {params.header}'
+#         """
+

@@ -15,12 +15,12 @@ def prepare_primer3_input(file_list:list[Path], output_dir: str,report_file:str)
     primer3_settings:dict = config_yaml["primer3_settings"]
     formated_settings:str ="\n".join([f'{key}={value}' for key, value in primer3_settings.items()])
 
-    targeted_areas_fasta:list[Path] = list(file_list.rglob("*.fasta")) 
+    #targeted_areas_fasta:list[Path] = file_list.rglob("*.fasta")
 
-    print(targeted_areas_fasta)
+    #print(targeted_areas_fasta)
     primer_info:list = []
 
-    for fasta_file in targeted_areas_fasta :
+    for fasta_file in file_list :
 
         output_path = output_dir / fasta_file.stem 
         output_path.mkdir(parents=True, exist_ok=True) 
