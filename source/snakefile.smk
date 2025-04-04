@@ -1,7 +1,7 @@
 import yaml
 from pathlib import Path
 
-from snakemake.linting.links import rules
+#from snakemake.linting.links import rules
 
 from script.prepare_kec_input import prepare_kec_input
 from script.prepare_primer3_input import prepare_primer3_input
@@ -24,6 +24,8 @@ KMER_INCLUDE = config["kec_include_settings"]["kmer_values"]
 KMER_EXCLUDE = config["kec_exclude_settings"]["kmer_values"]
 
 genera = [d.name for d in GENOME_DIR.iterdir() if d.is_dir()]
+
+print(genera)
 
 rule all:
     input:
@@ -205,38 +207,47 @@ rule make_BLAST_db:
 rule BLASTN_query:
     """BLASTN query in Database_nuc"""
     input:
-        db_done =rules.make_BLAST_db.output.blast_db_flag,
-        db_files =rules.make_BLAST_db.output.blast_db_files,
+        db_done = rules.make_BLAST_db.output.blast_db_flag,
     output:
-        blast_target=f'{OUTPUT_DIR}/5_BLAST/{{genus}}/{{type}}/BLAST_out/blast.done'
+        blast_target = f'{OUTPUT_DIR}/5_BLAST/{{genus}}/{{type}}/BLAST_out/blast.done'
     params:
-        output_dir = Path(blast_target).parent,
-        assemblies_dir = Path(blast_target).parent,
-        primer_dir = f'{OUTPUT_DIR}/5_BLAST/{{genus}}/primer',
-        assemblies = list(assemblies_dir.glob(".fasta")),
-        assemblies_str= " ".join(str(x) for x in assemblies)
-queries = list(primer_dir.glob(".fasta"))
+        output_dir = f'{OUTPUT_DIR}/5_BLAST/{{genus}}/{{type}}/BLAST_out',
+        assemblies_dir = f'{OUTPUT_DIR}/5_BLAST/{{genus}}/{{type}}',
+        primer_dir = f'{OUTPUT_DIR}/5_BLAST/{{genus}}/primer'
     conda:
         "envs/blast.yaml"
     shell:
-        f"""
-        for assembly in {params.assemblies_str}; do
-            
-            blastn \
-            -task blastn-short \
-            -query {params.queries} \
-            -db  $assembly \
-            -out {params.output_dir} \
-            -dust no \
-            -soft_masking false \
-            -penalty -3 \
-            -reward 1 \
-            -gapopen 5 \
-            -gapextend 2 \
-            -evalue 1e-5 \
-            -outfmt '6 qseqid sseqid pident length qframe sframe sstrand mismatch gapopen qstart qend sstart send evalue bitscore qseq sseq'
-            
-            touch {output.blast_target}
+        """
+        # Créer le répertoire de sortie
+        mkdir -p {params.output_dir}
+
+        # Pour chaque fichier de base de données BLAST dans assemblies_dir
+        for assembly_db in {params.assemblies_dir}/*.fasta; do
+
+            # Extraire le nom de la base de données (sans extension)
+            db_name=$(basename "$assembly_db" .fasta)
+
+            # Pour chaque amorce dans primer_dir
+            for primer in {params.primer_dir}/*.fasta; do
+
+                # Exécuter BLASTN
+                blastn \
+                    -task blastn-short \
+                    -query "$primer" \
+                    -db "$assembly_db" \
+                    -out "{params.output_dir}/$(basename "$primer" .fasta)_vs_$db_name.txt" \
+                    -dust no \
+                    -soft_masking false \
+                    -penalty -3 \
+                    -reward 1 \
+                    -gapopen 5 \
+                    -gapextend 2 \
+                    -evalue 1e-5 \
+                    -outfmt '6 qseqid sseqid pident length qframe sframe sstrand mismatch gapopen qstart qend sstart send evalue bitscore qseq sseq'
+            done
         done
+
+        # Créer le fichier flag
+        touch {output.blast_target}
         """
 
