@@ -11,9 +11,10 @@ source "$CONDA_ROOT/etc/profile.d/conda.sh"
 
 conda activate /shared/home/nponcelet/gbs_blast/envs/multimap
 
-snakemake --unlock 
+snakemake -s snakefile.smk --unlock
 
-snakemake --jobs 100 \
+snakemake -s snakefile.smk \
+          --jobs 100 \
           --verbose \
           --cluster-config config/cluster.yaml \
           --use-conda \

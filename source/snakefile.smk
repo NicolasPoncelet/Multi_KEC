@@ -1,5 +1,8 @@
 import yaml
 from pathlib import Path
+
+from snakemake.linting.links import rules
+
 from script.prepare_kec_input import prepare_kec_input
 from script.prepare_primer3_input import prepare_primer3_input
 from script.generate_input_path import get_input_path
@@ -185,6 +188,7 @@ rule make_BLAST_db:
     shell:
         """
         for fasta in {input.assemblies}; do
+        
             fasta_path=$(realpath "$fasta")
             fasta_dir=$(dirname "$fasta_path")
             fasta_name=$(basename "$fasta_path" .fasta)
@@ -198,31 +202,41 @@ rule make_BLAST_db:
         touch {output.blast_db_flag}
         """
 
-
-# rule BLASTN_query:
-#     """BLASTN query in Database_nuc"""
-#     input:
-#         db_files=rules.make_BLAST_db.output.blast_db_files, 
-#         query=f"{QUERY_DIR}/{{query}}.fasta",
-#         assemblies=rules.move_fasta.output
-#     output:
-#         BLASTN_out=f"{OUTPUT_DIR}/BLASTN/{{assembly}}/{{query}}_out_blast.txt"
-#     conda:
-#         "envs/blast.yaml"
-#     shell:
-#         """
-#         blastn \
-#         -task blastn-short \
-#         -query {input.query} \
-#         -db {OUTPUT_DIR}/Database_nuc/{wildcards.assembly} \
-#         -out {output.BLASTN_out} \
-#         -dust no \
-#         -soft_masking false \
-#         -penalty -3 \
-#         -reward 1 \
-#         -gapopen 5 \
-#         -gapextend 2 \
-#         -evalue 1e-5 \
-#         -outfmt '6 {params.header}'
-#         """
+rule BLASTN_query:
+    """BLASTN query in Database_nuc"""
+    input:
+        db_done =rules.make_BLAST_db.output.blast_db_flag,
+        db_files =rules.make_BLAST_db.output.blast_db_files,
+    output:
+        blast_target=f'{OUTPUT_DIR}/5_BLAST/{{genus}}/{{type}}/BLAST_out/blast.done'
+    params:
+        output_dir = Path(blast_target).parent,
+        assemblies_dir = Path(blast_target).parent,
+        primer_dir = f'{OUTPUT_DIR}/5_BLAST/{{genus}}/primer',
+        assemblies = list(assemblies_dir.glob(".fasta")),
+        assemblies_str= " ".join(str(x) for x in assemblies)
+queries = list(primer_dir.glob(".fasta"))
+    conda:
+        "envs/blast.yaml"
+    shell:
+        f"""
+        for assembly in {params.assemblies_str}; do
+            
+            blastn \
+            -task blastn-short \
+            -query {params.queries} \
+            -db  $assembly \
+            -out {params.output_dir} \
+            -dust no \
+            -soft_masking false \
+            -penalty -3 \
+            -reward 1 \
+            -gapopen 5 \
+            -gapextend 2 \
+            -evalue 1e-5 \
+            -outfmt '6 qseqid sseqid pident length qframe sframe sstrand mismatch gapopen qstart qend sstart send evalue bitscore qseq sseq'
+            
+            touch {output.blast_target}
+        done
+        """
 
