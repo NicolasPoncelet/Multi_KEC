@@ -44,6 +44,10 @@ rule all:
         db_blast_done = expand(f'{OUTPUT_DIR}/5_BLAST/{{genus}}/{{type}}/blast_db.done',
                         genus = genera,
                         type = ["target","non_target"]
+                        ),
+        blast_target = expand(f'{OUTPUT_DIR}/5_BLAST/{{genus}}/{{type}}/BLAST_out/blast.done',
+                        genus=genera,
+                        type=["target", "non_target"]
                         )
 
 rule prepare_input:
@@ -218,36 +222,37 @@ rule BLASTN_query:
         "envs/blast.yaml"
     shell:
         """
-        # Créer le répertoire de sortie
         mkdir -p {params.output_dir}
 
-        # Pour chaque fichier de base de données BLAST dans assemblies_dir
+        # Parcourir les bases de données BLAST
         for assembly_db in {params.assemblies_dir}/*.fasta; do
 
-            # Extraire le nom de la base de données (sans extension)
             db_name=$(basename "$assembly_db" .fasta)
 
-            # Pour chaque amorce dans primer_dir
-            for primer in {params.primer_dir}/*.fasta; do
+            # Vérifier les fichiers de la base de données
+            if [[ ! -f "{params.assemblies_dir}/$db_name.nhr" ]]; then
+                echo "Erreur: Base de données $db_name non trouvée. Vérifiez make_BLAST_db."
+                exit 1
+            fi
 
-                # Exécuter BLASTN
-                blastn \
-                    -task blastn-short \
-                    -query "$primer" \
-                    -db "$assembly_db" \
-                    -out "{params.output_dir}/$(basename "$primer" .fasta)_vs_$db_name.txt" \
-                    -dust no \
-                    -soft_masking false \
-                    -penalty -3 \
-                    -reward 1 \
-                    -gapopen 5 \
-                    -gapextend 2 \
-                    -evalue 1e-5 \
-                    -outfmt '6 qseqid sseqid pident length qframe sframe sstrand mismatch gapopen qstart qend sstart send evalue bitscore qseq sseq'
+            # Pour chaque amorce
+            for primer in {params.primer_dir}/*.fasta; do
+                primer_name=$(basename "$primer" .fasta)
+                blastn -task blastn-short \
+                       -query "$primer" \
+                       -db "{params.assemblies_dir}/$db_name" \
+                       -out "{params.output_dir}/$primer_name"_vs_"$db_name.txt" \
+                       -dust no \
+                       -soft_masking false \
+                       -penalty -3 \
+                       -reward 1 \
+                       -gapopen 5 \
+                       -gapextend 2 \
+                       -evalue 1e-5 \
+                       -outfmt '6 qseqid sseqid pident length qframe sframe sstrand mismatch gapopen qstart qend sstart send evalue bitscore qseq sseq'
             done
         done
 
-        # Créer le fichier flag
         touch {output.blast_target}
         """
 

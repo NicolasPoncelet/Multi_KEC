@@ -24,3 +24,9 @@ prepare_all_genomes:
 prepare_primer3_input:
     cpus-per-task: 5
     mem-per-cpu: 4G
+
+BLASTN_query:
+    cpus-per-task: 5
+    mem-per-cpu: 10G
+    partition: long
+
