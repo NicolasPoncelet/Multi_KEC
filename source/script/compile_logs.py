@@ -9,7 +9,7 @@ def compile_logs(log_dir:str,output_file:str) -> None :
     log_dir = Path(log_dir).resolve()
     output_path.parent.mkdir(parents=True, exist_ok=True) 
 
-    out_files:list[Path] = list(log for log in log_dir.glob("*.out") if log.stem.startswith("kec_"))
+    out_files:list[Path] = list(log for log in log_dir.rglob("*/*.out") if log.stem.startswith("kec_"))
     print(*out_files,sep = '\n')
     results:list = []
 
@@ -38,6 +38,10 @@ def compile_logs(log_dir:str,output_file:str) -> None :
     summary = pd.DataFrame.from_dict(results)
     summary.to_csv(output_path)
 
+# test = "/shared/home/nponcelet/lolium_gbs/04_Test_MultiKEC/source/logs"
+# test_file = "/shared/home/nponcelet/lolium_gbs/04_Test_MultiKEC/source/test.csv"
+
+# compile_logs(test, test_file)
 
 if __name__ == "__main__" :
 

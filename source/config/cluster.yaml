@@ -4,8 +4,8 @@ __default__:
     partition: fast
     job-name: '{rule}.{wildcards}'
     time: '2:00:00'
-    output: 'logs/{rule}.{wildcards}.out'
-    error: 'logs/{rule}.{wildcards}.err'
+    output: 'logs/{rule}/{rule}.{wildcards}.out'
+    error: 'logs/{rule}/{rule}.{wildcards}.err'
 
 kec_include:
     cpus-per-task: 5
@@ -27,6 +27,6 @@ prepare_primer3_input:
 
 BLASTN_query:
     cpus-per-task: 5
-    mem-per-cpu: 10G
+    mem-per-cpu: 20G
     partition: long
 

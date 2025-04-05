@@ -25,8 +25,6 @@ KMER_EXCLUDE = config["kec_exclude_settings"]["kmer_values"]
 
 genera = [d.name for d in GENOME_DIR.iterdir() if d.is_dir()]
 
-print(genera)
-
 rule all:
     input:
         kec_ex = expand(
@@ -224,32 +222,24 @@ rule BLASTN_query:
         """
         mkdir -p {params.output_dir}
 
-        # Parcourir les bases de données BLAST
         for assembly_db in {params.assemblies_dir}/*.fasta; do
 
             db_name=$(basename "$assembly_db" .fasta)
 
-            # Vérifier les fichiers de la base de données
-            if [[ ! -f "{params.assemblies_dir}/$db_name.nhr" ]]; then
-                echo "Erreur: Base de données $db_name non trouvée. Vérifiez make_BLAST_db."
-                exit 1
-            fi
-
-            # Pour chaque amorce
             for primer in {params.primer_dir}/*.fasta; do
                 primer_name=$(basename "$primer" .fasta)
                 blastn -task blastn-short \
-                       -query "$primer" \
-                       -db "{params.assemblies_dir}/$db_name" \
-                       -out "{params.output_dir}/$primer_name"_vs_"$db_name.txt" \
-                       -dust no \
-                       -soft_masking false \
-                       -penalty -3 \
-                       -reward 1 \
-                       -gapopen 5 \
-                       -gapextend 2 \
-                       -evalue 1e-5 \
-                       -outfmt '6 qseqid sseqid pident length qframe sframe sstrand mismatch gapopen qstart qend sstart send evalue bitscore qseq sseq'
+                    -query "$primer" \
+                    -db "{params.assemblies_dir}/$db_name" \
+                    -out "{params.output_dir}/${{primer_name}}_vs_${{db_name}}.txt" \
+                    -dust no \
+                    -soft_masking false \
+                    -penalty -3 \
+                    -reward 1 \
+                    -gapopen 5 \
+                    -gapextend 2 \
+                    -evalue 1e-3 \
+                    -outfmt '6 qseqid sseqid pident length qframe sframe sstrand mismatch gapopen qstart qend sstart send evalue bitscore qseq sseq'
             done
         done
 

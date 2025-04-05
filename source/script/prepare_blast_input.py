@@ -26,7 +26,7 @@ def extract_fasta(metadata_file,output_dir) -> None :
         if not fasta_subdir.exists() :
             fasta_subdir.mkdir(parents=True, exist_ok=True)
 
-        fasta_file_name = fasta_subdir / f' {sequence_name}_{primer_number}.fasta'
+        fasta_file_name = fasta_subdir / f'{sequence_name}_{primer_number}.fasta'
 
         with open(fasta_file_name, "w") as infile :
 

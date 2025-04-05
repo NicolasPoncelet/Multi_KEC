@@ -1,0 +1,145 @@
+---
+title: "Multi KEC report"
+title-block-banner: '#446e9b'
+author: "Nicolas Poncelet"
+lightbox:
+  match: auto
+  effect: fade
+  desc-position: right
+  loop: false
+date:  today
+lang: en
+format: 
+  html:
+    html-math-method: mathml
+    html_document: default
+    theme: spcacelab
+    page-layout: full
+    embed-resources: true
+    code-tools:
+      source: true
+      toggle: true
+    code-fold: true
+    code-copy: true
+    code_download: true
+    toc: true
+    toc-location: left
+    number-sections: true
+    smooth-scroll: true
+
+---
+
+
+
+
+
+```{r,echo=TRUE, include=FALSE}
+
+#Nettoyage de la cache.
+
+rm(list=ls()) 
+
+options(dplyr.summarise.inform = FALSE)
+
+```
+
+
+```{r,package,echo=TRUE, include=FALSE}
+
+#Chargement des packages nécessaires.
+
+library(DT) # Tableau interactif.
+library(ggplot2)
+library(heatmaply) # création de heatmap interactive.
+library(kableExtra) # Tableau interactif.
+library(plotly) # Rend les graphes interactifs.
+library(tidyverse)
+
+```
+
+
+
+```{r, load_raw_data}
+
+df_reference <- read.delim("references.csv",sep = ";")
+
+df_fastq <- read.delim("fastq.csv",sep = ";")
+
+df_flagstat <- read.delim("flagstat.csv",sep = ";")
+
+```
+
+# Introduction
+
+This report has been generated during the [Multi_KEC snakemake pipeline](https://github.com/NicolasPoncelet/Multi_KEC). 
+
+![Rulegraph of multimap pipeline](../../Assets/rulegraph.svg)
+
+
+
+# Input Data Overview
+
+The reference FASTA files used in this analysis are listed in the table below:
+
+```{r,reference_table}
+df_reference%>%
+kbl()%>%
+kable_styling("striped")
+```
+
+The metrics for the FASTQ files are summarized in the table below:
+
+```{r,fastq_table}
+df_fastq%>%
+  select(Isolat,Total_reads)%>%
+kbl()%>%
+kable_styling("striped")
+```
+
+
+# Alignment Results
+
+The percentages of properly paired reads for the different samples are visualized in a heatmap. The samples are displayed on the y-axis, and the reference sequences are shown on the x-axis. Higher mapping percentages are represented by brighter yellow colors, while lower percentages are represented by darker blue tones.
+
+```{r,heatmap}
+
+df_long <- df_flagstat %>%
+  select(Isolat, Reference, Properly_paired_percentage)
+
+df_W <- pivot_wider(df_long, 
+                    names_from = Reference, 
+                    values_from = Properly_paired_percentage)
+
+df_W <- df_W %>%
+  remove_rownames %>%
+  column_to_rownames(var = "Isolat")
+
+mat_genome <- as.matrix(df_W)
+
+
+result_matrix <- tryCatch({
+  
+    heatmaply(mat_genome,
+            seriate = "OLO",
+            show_dendrogram = c(TRUE, FALSE),
+            fontsize_col = 8,
+            fontsize_row = 8,
+            plot_method = "plotly",
+            k_row = NA,
+            limits = c(0, 100))
+}, 
+error = function(e) {
+
+message("Une erreur est survenue : ", e$message)
+  
+heatmaply(mat_genome,
+          show_dendrogram = c(FALSE, FALSE),
+          plot_method = "plotly",
+          limits = c(0, 100)
+          )
+}
+
+)
+
+result_matrix
+```
