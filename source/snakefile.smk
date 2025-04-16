@@ -1,8 +1,6 @@
 import yaml
 from pathlib import Path
 
-#from snakemake.linting.links import rules
-
 from script.prepare_kec_input import prepare_kec_input
 from script.prepare_primer3_input import prepare_primer3_input
 from script.generate_input_path import get_input_path
@@ -11,6 +9,7 @@ from script.select_best_runs import select_best_runs
 from script.prepare_blast_input import prepare_blast_input, extract_fasta
 from script.compile_primer_info import compile_primer_info
 from script.generate_blast_path import generate_blast_path
+from script.metrics_utils import compile_assemblies_info
 
 configfile: "config/config.yaml"
 
@@ -27,6 +26,7 @@ genera = [d.name for d in GENOME_DIR.iterdir() if d.is_dir()]
 
 rule all:
     input:
+        genome_report = f"{OUTPUT_DIR}/0_Final/genome_report.csv",
         kec_ex = expand(
             f"{OUTPUT_DIR}/2_KEC_output/{{genus}}/{{kmer_in}}_{{kmer_ex}}/{{genus}}.fasta",
             genus=genera,
@@ -47,6 +47,17 @@ rule all:
                         genus=genera,
                         type=["target", "non_target"]
                         )
+
+rule calculate_assemblies_metrics:
+    input:
+        genomes = GENOME_DIR
+    output:
+        genome_report = f"{OUTPUT_DIR}/0_Final/genome_report.csv"
+    run:
+        compile_assemblies_info(
+            assembly_dir = input.genomes,
+            report_file = output.genome_report
+        )
 
 rule prepare_input:
     input:

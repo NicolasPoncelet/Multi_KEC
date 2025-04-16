@@ -1,16 +1,15 @@
 from yaml import safe_load
 from pathlib import Path
+import sys
 
-def compile_assemblies_info(report_file:str) -> None :
+def compile_assemblies_info(assembly_dir:Path,report_file:str) -> None :
 
-    report_path:Path = Path(report_file)
+    report_path:Path = Path(report_file).resolve()
     report_content:str = "\t".join(["Genus","Assembly","Size","Scaffolds","GC_ratio","N_ratio"])
 
     with open("../config/config.yaml", "r") as infile:
         config_yaml = safe_load(infile)
     
-    assembly_dir:Path = Path(config_yaml["genomes_dir"]).resolve()
-
     assemblies:list[Path] = list(assembly_dir.rglob("*/*.fasta"))
 
     for assembly in assemblies :
@@ -52,6 +51,12 @@ def get_assembly_metrics(assembly_path:Path) -> tuple[str] :
 
     return (str(assembly_size_mb),str(scaffold_number), str(gc_ratio), str(n_ratio))
 
-report_file = "/shared/home/nponcelet/lolium_gbs/04_Test_MultiKEC/source/report.txt"
+# report_file = "/shared/home/nponcelet/lolium_gbs/04_Test_MultiKEC/source/report.txt"
 
-metrics = compile_assemblies_info(report_file)
+# metrics = compile_assemblies_info(report_file)
+
+if __name__ == "__main__" :
+
+    assembly_dir, report_file = sys.argv[1], sys.argv[2]
+
+    compile_assemblies_info(assembly_dir,report_file)

@@ -2,11 +2,11 @@
 # -----------------------------------------
 # Input directories (specify paths to data files):
 
-genomes_dir: "/shared/home/nponcelet/lolium_gbs/04_Test_MultiKEC/Test_data/Genomes"
+genomes_dir: "/home/nponcelet/Documents/03-Script/00_Projet_Perso/02_Bioinfo/47_Multi_KEC/Test_data/Genomes"
 
 # Output directory (specify where results will be saved):
 
-analysis_dir: "/shared/home/nponcelet/lolium_gbs/04_Test_MultiKEC/Test_data/Output"
+analysis_dir: "/home/nponcelet/Documents/03-Script/00_Projet_Perso/02_Bioinfo/47_Multi_KEC/Test_data/Output"
 
 # Multi_KEC settings
 # -----------------------------------------
@@ -15,7 +15,7 @@ analysis_dir: "/shared/home/nponcelet/lolium_gbs/04_Test_MultiKEC/Test_data/Outp
 
 master_per_genus: {"Bipolaris": "Bipolaris_oryzae_ATCC_44560",
                   "Curvularia": "Curvularia_clavata_strain_yc1106",
-                  "Exserohilum": Exserohilum_rostratum_strain_ER1}
+                  "Exserohilum": "Exserohilum_rostratum_strain_ER1"}
 
 kec_include_settings: 
   kec_params: "--min=500"

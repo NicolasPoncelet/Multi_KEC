@@ -54,27 +54,38 @@ library(heatmaply) # création de heatmap interactive.
 library(kableExtra) # Tableau interactif.
 library(plotly) # Rend les graphes interactifs.
 library(tidyverse)
-
+library(patchwork)
+library(htmltools)
 ```
-
 
 
 ```{r, load_raw_data}
 
-df_reference <- read.delim("references.csv",sep = ";")
+df_reference <- read.delim("genome_report.csv",sep = "\t")
 
-df_fastq <- read.delim("fastq.csv",sep = ";")
+kec_df <- read.delim("KEC_run_info.csv",sep = ',')%>%
+  mutate(Kmer_size_selection = paste0("In",kmer_in,"_","Ex",kmer_ex))
 
-df_flagstat <- read.delim("flagstat.csv",sep = ";")
+kec_best_runs <- read.delim("KEC_best_run.csv", sep =",")
+```
 
+```{r}
+n_levels <- length(unique(kec_df$Kmer_size_selection))
+
+colorpalette <- viridis(n_levels)
+
+color_df <- tibble(Kmer_size_selection = unique(kec_df$Kmer_size_selection),
+                   Colors = colorpalette)
+
+kec_df <- kec_df%>%
+  left_join(color_df, by = "Kmer_size_selection")
 ```
 
 # Introduction
 
 This report has been generated during the [Multi_KEC snakemake pipeline](https://github.com/NicolasPoncelet/Multi_KEC). 
 
-![Rulegraph of multimap pipeline](../../Assets/rulegraph.svg)
-
+![Rulegraph of multimap pipeline](../../../Multi_KEC/assets/rulegraph.png)
 
 
 # Input Data Overview
@@ -87,59 +98,103 @@ kbl()%>%
 kable_styling("striped")
 ```
 
-The metrics for the FASTQ files are summarized in the table below:
 
-```{r,fastq_table}
-df_fastq%>%
-  select(Isolat,Total_reads)%>%
-kbl()%>%
-kable_styling("striped")
+# Kec results
+
+The table and the barplots below show the number of unique sequences found for each combination of kmer, for the first phase, kec include and the second one, kex exclude.
+
+```{r}
+
+kec_df%>%
+  arrange(Genus,seq_number)%>%
+  select(-X,-Run,-Kmer_size_selection,-Colors)%>%
+  DT::datatable(filter = 'bottom',extensions = 'Buttons',
+            options = list(scrollX = TRUE,
+                         dom = 'Blfrtip',
+                           initComplete = JS(
+                           "function(settings, json) {",
+                           "$(this.api().table().header()).css({'background-color': '#446e9b','color': '#fff'});",
+                           "}"),
+                           buttons = c('copyHtml5', 'csvHtml5'),
+                           lengthMenu = list(c(10,25,50,-1),
+                                             c(10,25,50,"All"))))
+
 ```
 
 
-# Alignment Results
+```{r,vect_genome}
 
-The percentages of properly paired reads for the different samples are visualized in a heatmap. The samples are displayed on the y-axis, and the reference sequences are shown on the x-axis. Higher mapping percentages are represented by brighter yellow colors, while lower percentages are represented by darker blue tones.
+genera <- unique(kec_df$Genus)%>%
+                        sort()
 
-```{r,heatmap}
-
-df_long <- df_flagstat %>%
-  select(Isolat, Reference, Properly_paired_percentage)
-
-df_W <- pivot_wider(df_long, 
-                    names_from = Reference, 
-                    values_from = Properly_paired_percentage)
-
-df_W <- df_W %>%
-  remove_rownames %>%
-  column_to_rownames(var = "Isolat")
-
-mat_genome <- as.matrix(df_W)
+kec_df$Step <- factor(kec_df$Step , levels = c("Include", "Exclude"))
+```
 
 
-result_matrix <- tryCatch({
+```{r,function}
+#|include: false
+
+tabs <- list()
+
+for (i in 1:length(genera)) {
   
-    heatmaply(mat_genome,
-            seriate = "OLO",
-            show_dendrogram = c(TRUE, FALSE),
-            fontsize_col = 8,
-            fontsize_row = 8,
-            plot_method = "plotly",
-            k_row = NA,
-            limits = c(0, 100))
-}, 
-error = function(e) {
-
-message("Une erreur est survenue : ", e$message)
+  genus_ylim <- max(kec_df$Kmer_size_selection) 
   
-heatmaply(mat_genome,
-          show_dendrogram = c(FALSE, FALSE),
-          plot_method = "plotly",
-          limits = c(0, 100)
-          )
+  df_genus <- kec_df %>%
+    filter(Genus == genera[i]) %>%
+    arrange(Kmer_size_selection)
+  
+  barplot_genome <- df_genus%>%
+    ggplot(aes(
+    x = Kmer_size_selection,
+    y = seq_number,
+    fill = Kmer_size_selection,
+    alpha = Step
+  )) +
+    geom_bar(stat = "identity", position = "stack", colour = "#363737") +
+    scale_fill_manual(values = unique(df_genus$Colors)) + 
+    scale_alpha_manual(values = c("Include" = 0.5, "Exclude" = 0.9)) + 
+    theme_light() +
+    ggtitle(genera[i]) +
+    ylim(0, genus_ylim) +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1, size = 10),  
+      legend.position = "right"
+    )+
+      labs(
+      title = "Number of unique sequence per KEC step", 
+      y = "Sequence number", 
+      x = "Kmer size selection"
+    ) 
+  
+
+  genome_plot <- ggplotly(barplot_genome) 
+  
+  tabs[[i]] <- tagList(
+    HTML(markdown::mark(text = paste0("\n### ", genera[i], " \n"))),
+    genome_plot,
+    HTML("<br><br>")  
+  )
 }
 
-)
+```
 
-result_matrix
+
+```{r, results='asis',fig.width=8, fig.height=8}
+#|warning: false 
+#|message: false
+
+tagList(tabs)
+
+```
+
+
+Voici un tableau représentant les combinaisons de kmer gardés pour chaque genre.
+
+```{r}
+kec_best_runs%>%
+  select(Genus,kmer_in,kmer_ex,seq_number)%>%
+  arrange(Genus)%>%
+  kbl()%>%
+  kable_styling("striped")
 ```
