@@ -2,15 +2,14 @@ from yaml import safe_load
 from pathlib import Path
 import sys
 
-def compile_assemblies_info(assembly_dir:Path,report_file:str) -> None :
+def compile_assemblies_info(assembly_dir:str,report_file:str) -> None :
+
+    assembly_path:Path = Path(assembly_dir).resolve()
 
     report_path:Path = Path(report_file).resolve()
     report_content:str = "\t".join(["Genus","Assembly","Size","Scaffolds","GC_ratio","N_ratio"])
 
-    with open("../config/config.yaml", "r") as infile:
-        config_yaml = safe_load(infile)
-    
-    assemblies:list[Path] = list(assembly_dir.rglob("*/*.fasta"))
+    assemblies:list[Path] = list(assembly_path.rglob("*/*.fasta"))
 
     for assembly in assemblies :
         

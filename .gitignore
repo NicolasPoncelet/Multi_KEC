@@ -3,6 +3,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 Test_data/*
+source/logs/*
 
 # Files related to Snakemake and mapping
 .snakemake/

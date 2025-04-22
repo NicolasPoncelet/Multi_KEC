@@ -43,6 +43,9 @@ rule all:
                         genus = genera,
                         type = ["target","non_target"]
                         ),
+                        +                        ),
+        blast_local_db_target = expand(f'{OUTPUT_DIR}/5_BLAST/{{genus}}/BLAST_local_nt_out/blast.done',
+                        genus = genera),
         blast_target = expand(f'{OUTPUT_DIR}/5_BLAST/{{genus}}/{{type}}/BLAST_out/blast.done',
                         genus=genera,
                         type=["target", "non_target"]
@@ -257,3 +260,41 @@ rule BLASTN_query:
         touch {output.blast_target}
         """
 
+rule BLASTN_local_nt:
+    """BLASTN query in Database_nuc"""
+    input:
+        db_done = expand( f'{OUTPUT_DIR}/5_BLAST/{{genus}}/{{type}}/blast_db.done',
+                        genus=genera,
+                        type=["target", "non_target"])
+    output:
+        blast_local_db_target = f'{OUTPUT_DIR}/5_BLAST/{{genus}}/BLAST_local_nt_out/blast.done'
+    params:
+        local_db = config["local_db"],
+        output_dir = f'{OUTPUT_DIR}/5_BLAST/{{genus}}/BLAST_local_nt_out',
+        primer_dir = f'{OUTPUT_DIR}/5_BLAST/{{genus}}/primer'
+    conda:
+        "envs/blast.yaml"
+    shell:
+        """
+        mkdir -p {params.output_dir}
+
+        for primer in {params.primer_dir}/*.fasta; do
+
+            primer_name=$(basename "$primer" .fasta)
+
+            blastn -task blastn-short \
+                -query "$primer" \
+                -db "{params.local_db}" \
+                -out "{params.output_dir}/${{primer_name}}_vs_local_db.txt" \
+                -dust no \
+                -soft_masking false \
+                -penalty -3 \
+                -reward 1 \
+                -gapopen 5 \
+                -gapextend 2 \
+                -evalue 1e-3 \
+                -outfmt '6 qseqid sseqid pident length qframe sframe sstrand mismatch gapopen qstart qend sstart send evalue bitscore qseq sseq taxids'
+        done
+
+        touch {output.blast_local_db_target}
+        """
