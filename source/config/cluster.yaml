@@ -30,3 +30,7 @@ BLASTN_query:
     mem-per-cpu: 20G
     partition: long
 
+BLASTN_local_nt:
+    cpus-per-task: 5
+    mem-per-cpu: 20G
+    partition: long
