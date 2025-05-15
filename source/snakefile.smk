@@ -44,12 +44,11 @@ rule all:
                         genus = genera,
                         type = ["target","non_target"]
                         ),
-        blast_local_db_target = expand(f'{OUTPUT_DIR}/5_BLAST/{{genus}}/BLAST_local_nt_out/blast.done',
-                        genus = genera),
         blast_target = expand(f'{OUTPUT_DIR}/5_BLAST/{{genus}}/{{type}}/BLAST_out/blast.done',
                         genus=genera,
                         type=["target", "non_target"]
-                        )
+                        ),
+        primer_qc = f"{OUTPUT_DIR}/0_Final/primer_qc.csv"
 
 rule calculate_assemblies_metrics:
     input:
@@ -262,7 +261,11 @@ rule BLASTN_query:
 
 rule check_BLAST_results :
     input: 
-        blast_done = rules.BLASTN_query.output
+        blast_done =expand(
+            f'{OUTPUT_DIR}/5_BLAST/{{genus}}/{{type}}/BLAST_out/blast.done',
+            genus = genera,
+            type = ["target","non_target"]
+            )
     output:
         primer_qc = f"{OUTPUT_DIR}/0_Final/primer_qc.csv"
     params:

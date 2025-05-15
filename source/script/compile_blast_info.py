@@ -1,9 +1,11 @@
 from pathlib import Path
 import pandas as pd
+import sys
 
 def compile_blast_info(file_dir:str,output_file:str) -> None :
 
     path_to_files:Path = Path(file_dir).resolve()
+    output_path:Path = Path(output_file).resolve()
     blast_files:list[Path] = list(path_to_files.rglob("*/*/BLAST_out/*.txt"))
     blast_result:dict = {}
 
@@ -28,11 +30,11 @@ def compile_blast_info(file_dir:str,output_file:str) -> None :
         blast_result[key][file_type].append(check_result)
 
     df = pd.DataFrame(blast_result.values())
-    df["target"] = df["target"].apply(all)
+    df["target"] = df["target"].apply(all) # check si toutes les valeurs  de la liste sont true
     df["non_target"] = df["non_target"].apply(all)
     df["Pass"] = df["target"] & ~df["non_target"] # ~ inverse le bool 
 
-    print(df)
+    df.to_csv(output_path)
 
 
 def check_blast(blast_path: Path) -> bool:
@@ -59,11 +61,16 @@ def check_blast(blast_path: Path) -> bool:
         return "plus" in content and "minus" in content
 
 
-
 # Test
 
-path_to_fasta = "/shared/home/nponcelet/lolium_gbs/04_Test_MultiKEC/Test_data/Output/5_BLAST/"
+# path_to_fasta = "/shared/home/nponcelet/lolium_gbs/04_Test_MultiKEC/Test_data/Output/5_BLAST/"
 
-compile_blast_info(path_to_fasta,'.')
+# compile_blast_info(path_to_fasta,'.')
+
+if __name__ == "__main__" :
+
+    file_dir, output_csv = sys.argv[1], sys.argv[2]
+
+    compile_blast_info(file_dir,output_csv)
 
 
